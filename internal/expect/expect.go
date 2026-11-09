@@ -24,9 +24,6 @@ import (
 // ErrSyntax marks a malformed expectations file.
 var ErrSyntax = errors.New("expectations syntax error")
 
-// maxListedPorts limits how many ports of a range are probed explicitly.
-const maxListedPorts = 64
-
 // Rule is one "allow" line.
 type Rule struct {
 	Line  int
@@ -139,22 +136,6 @@ func (s *Set) Prefixes() []netip.Prefix {
 	var out []netip.Prefix
 	for _, r := range s.Rules {
 		out = append(out, r.From...)
-	}
-	return out
-}
-
-// Endpoints lists the ports the file names, skipping large ranges.
-func (s *Set) Endpoints() []ProtoPort {
-	var out []ProtoPort
-	for _, r := range s.Rules {
-		for _, pr := range r.Ports {
-			if int(pr.To)-int(pr.From) >= maxListedPorts {
-				continue
-			}
-			for p := int(pr.From); p <= int(pr.To); p++ {
-				out = append(out, ProtoPort{Proto: r.Proto, Port: uint16(p)})
-			}
-		}
 	}
 	return out
 }

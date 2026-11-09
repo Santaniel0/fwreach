@@ -249,3 +249,76 @@ func TestUnknownIface(t *testing.T) {
 		t.Fatalf("want ErrUnknownIface, got %v", err)
 	}
 }
+
+func findFam(t *testing.T, rep *Report, port uint16, fam netpkt.Family) Finding {
+	t.Helper()
+	for _, f := range rep.Findings {
+		if f.Port == port && f.Family == fam {
+			return f
+		}
+	}
+	t.Fatalf("no finding for port %d %v", port, fam)
+	return Finding{}
+}
+
+// Docker 29 with the nftables backend and a Debian-style inet filter table
+// whose forward rule tries to drop the published port.
+func TestNftablesDockerPortRewrite(t *testing.T) {
+	rep, err := Analyze(context.Background(), load(t, filepath.Join(snapshots, "debian-nft-docker29")), Options{Expect: expectations(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := findFam(t, rep, 3000, netpkt.IPv4)
+	if f.Status != StatusExposed || f.Expect != ExpectViolation || f.Sink != "container ai-webui-1 172.19.0.2:8080" {
+		t.Fatalf("3000/v4: %v %v %q", f.Status, f.Expect, f.Sink)
+	}
+	if len(f.Notes) != 2 || !strings.Contains(f.Notes[0], "policy drop of inet filter input") ||
+		!strings.Contains(f.Notes[1], `inet filter forward #1 "tcp dport 3000 drop" matches port 3000`) {
+		t.Fatalf("notes %q", f.Notes)
+	}
+	if len(f.Hints) != 1 || f.Hints[0].Text != NftGuardTable("eth0", netpkt.ProtoTCP, 3000) || f.Hints[0].Doc != docNftables {
+		t.Fatalf("hints %+v", f.Hints)
+	}
+	if f6 := findFam(t, rep, 3000, netpkt.IPv6); f6.Status != StatusFiltered {
+		t.Fatalf("3000/v6 reaches docker-proxy through input, where policy drop applies; got %v", f6.Status)
+	}
+}
+
+// guardJSON is the hint's table written in nft -j form, as nft would list it
+// after `nft -f` of the hint text.
+const guardJSON = `{"table": {"family": "inet", "name": "fwreach-guard", "handle": 9}},
+ {"chain": {"family": "inet", "table": "fwreach-guard", "name": "forward", "handle": 1, "type": "filter", "hook": "forward", "prio": 0, "policy": "accept"}},
+ {"rule": {"family": "inet", "table": "fwreach-guard", "chain": "forward", "handle": 2, "expr": [
+  {"match": {"op": "==", "left": {"meta": {"key": "iifname"}}, "right": "eth0"}},
+  {"match": {"op": "==", "left": {"meta": {"key": "l4proto"}}, "right": "tcp"}},
+  {"match": {"op": "==", "left": {"ct": {"key": "proto-dst", "dir": "original"}}, "right": 3000}},
+  {"drop": null}]}},`
+
+func TestNftGuardHintFlipsVerdict(t *testing.T) {
+	dir := variant(t, "debian-nft-docker29", func(file, data string) string {
+		if file != snapshot.FileNft {
+			return data
+		}
+		return replace(t, data, `{"nftables": [`, `{"nftables": [`+guardJSON)
+	})
+	snap := load(t, dir)
+	var guard string
+	for _, tb := range snap.Ruleset.Tables {
+		if tb.Name == "fwreach-guard" {
+			guard = tb.Chains[0].Rules[0].Text
+		}
+	}
+	if want := GuardTable("eth0", netpkt.ProtoTCP, 3000).Chains[0].Rules[0].Text; guard != want {
+		t.Fatalf("hint text and its JSON form disagree:\n json: %q\n hint: %q", guard, want)
+	}
+	rep, err := Analyze(context.Background(), snap, Options{Expect: expectations(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f := findFam(t, rep, 3000, netpkt.IPv4); f.Status != StatusFiltered || rep.Violations() != 0 {
+		t.Fatalf("3000 with the guard table: %v, violations %d", f.Status, rep.Violations())
+	}
+	if f := findFam(t, rep, 22, netpkt.IPv4); f.Status != StatusExposed {
+		t.Fatalf("guard must not affect ssh, got %v", f.Status)
+	}
+}

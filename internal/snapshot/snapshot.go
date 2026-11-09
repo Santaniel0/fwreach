@@ -17,6 +17,7 @@ import (
 
 	"github.com/Santaniel0/fwreach/internal/iptables"
 	"github.com/Santaniel0/fwreach/internal/netpkt"
+	"github.com/Santaniel0/fwreach/internal/nftjson"
 	"github.com/Santaniel0/fwreach/internal/ruleset"
 )
 
@@ -82,6 +83,7 @@ func Load(dir string) (*Snapshot, error) {
 		return nil, err
 	}
 	fams := map[netpkt.Family]bool{}
+	haveNftCompat := false
 	for _, f := range []struct {
 		name   string
 		fam    netpkt.Family
@@ -100,11 +102,33 @@ func Load(dir string) (*Snapshot, error) {
 			s.addTables(f.name, res.Source, res.Tables)
 			s.Warnings = append(s.Warnings, prefixAll(f.name, res.Warnings)...)
 			fams[f.fam] = true
+			haveNftCompat = haveNftCompat || res.Source == ruleset.SourceIPTablesNft
 			return nil
 		})
 		if err != nil {
 			return nil, err
 		}
+	}
+	err := withFile(dir, FileNft, func(r io.Reader) error {
+		res, err := nftjson.Parse(r)
+		if err != nil {
+			return err
+		}
+		var keep []*ruleset.Table
+		for _, t := range res.Tables {
+			if haveNftCompat && t.Family != ruleset.FamilyInet && compatTables[t.Name] {
+				continue
+			}
+			keep = append(keep, t)
+			fams[netpkt.IPv4] = fams[netpkt.IPv4] || t.Family != ruleset.FamilyIP6
+			fams[netpkt.IPv6] = fams[netpkt.IPv6] || t.Family != ruleset.FamilyIP
+		}
+		s.addTables(FileNft, ruleset.SourceNftables, keep)
+		s.Warnings = append(s.Warnings, prefixAll(FileNft, res.Warnings)...)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	if len(s.Sources) == 0 {
 		return nil, fmt.Errorf("%s: %w", dir, ErrNoRuleset)

@@ -401,6 +401,23 @@ func (m MarkMatch) Eval(p *netpkt.Packet, _ *netpkt.Host) netpkt.Tristate {
 	return netpkt.Bool((p.Mark&m.Mask == m.Value) != m.Negate)
 }
 
+// AnyMatch holds when any of its matches does, like an nft anonymous set
+// of interface names.
+type AnyMatch []Match
+
+func (m AnyMatch) Eval(p *netpkt.Packet, h *netpkt.Host) netpkt.Tristate {
+	res := netpkt.No
+	for _, sub := range m {
+		switch sub.Eval(p, h) {
+		case netpkt.Yes:
+			return netpkt.Yes
+		case netpkt.Unknown:
+			res = netpkt.Unknown
+		}
+	}
+	return res
+}
+
 // UnknownMatch stands for a match fwreach does not model.
 type UnknownMatch struct{ What string }
 

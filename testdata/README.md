@@ -32,4 +32,10 @@ Changes made to the upstream material:
   0.0.0.0:5432 through Docker's iptables backend.
 - `snapshots/ubuntu-ufw-docker-fixed`: the same host plus exactly the
   DOCKER-USER rule that fwreach suggests for 5432.
-- `expect.conf`: the expectations file used with both of them.
+- `snapshots/debian-nft-docker29`: Docker 29 with `firewall-backend:
+  nftables` (Docker's `ip docker-bridges` table, publishing 3000 to a
+  container's 8080) next to a Debian-style `inet filter` table: input
+  policy drop, and a forward rule `tcp dport 3000 drop` that never matches
+  because DNAT already rewrote the port. The forum thread this mirrors:
+  https://forums.docker.com/t/how-to-block-ports-inusing-nftables-with-docker-v29/151450
+- `expect.conf`: the expectations file used with all of them.

@@ -32,6 +32,7 @@ func TestAnalyzeGolden(t *testing.T) {
 	}{
 		{"ubuntu-ufw-docker.golden", []string{"analyze", "-expect", expectFile, snaps + "ubuntu-ufw-docker"}, exitViolation},
 		{"ubuntu-ufw-docker-fixed.golden", []string{"analyze", "-expect", expectFile, snaps + "ubuntu-ufw-docker-fixed"}, exitOK},
+		{"debian-nft-docker29.golden", []string{"analyze", "-expect", expectFile, snaps + "debian-nft-docker29"}, exitViolation},
 	}
 	for _, tc := range cases {
 		t.Run(tc.golden, func(t *testing.T) {

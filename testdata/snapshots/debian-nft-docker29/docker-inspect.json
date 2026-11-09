@@ -1,0 +1,6 @@
+[
+  {"Id": "e2a9c0d14b73", "Name": "/ai-webui-1",
+   "NetworkSettings": {
+     "Ports": {"8080/tcp": [{"HostIp": "0.0.0.0", "HostPort": "3000"}, {"HostIp": "::", "HostPort": "3000"}]},
+     "Networks": {"ai_default": {"IPAddress": "172.19.0.2", "Gateway": "172.19.0.1", "GlobalIPv6Address": ""}}}}
+]

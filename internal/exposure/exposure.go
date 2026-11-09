@@ -216,7 +216,8 @@ func addrOf(ifc netpkt.Iface, fam netpkt.Family) (netip.Addr, bool) {
 }
 
 // targets collects the ports worth probing: listeners not bound to
-// loopback, Docker published ports, DNAT rules and the expectations file.
+// loopback, Docker published ports and DNAT rules. Anything else has
+// nothing behind it that a packet could reach.
 func (a *analyzer) targets(ifaces []netpkt.Iface) []Target {
 	seen := map[Target]bool{}
 	add := func(pp expect.ProtoPort, fams ...netpkt.Family) {
@@ -246,11 +247,6 @@ func (a *analyzer) targets(ifaces []netpkt.Iface) []Target {
 	}
 	for _, pp := range dnatPorts(a.snap.Ruleset) {
 		add(pp.ProtoPort, pp.Family)
-	}
-	if a.opts.Expect != nil {
-		for _, pp := range a.opts.Expect.Endpoints() {
-			add(pp, both...)
-		}
 	}
 	var out []Target
 	for t := range seen {

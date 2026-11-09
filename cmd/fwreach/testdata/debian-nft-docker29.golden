@@ -1,0 +1,31 @@
+fwreach: what this host's netfilter allows inbound (simulated from a snapshot, no packets sent)
+host        gpu-1, collected 2026-11-09T11:40:00Z
+rules       nft.json: nftables, 2 tables, 29 rules
+interfaces  eth0 203.0.113.20 2001:db8:20::20
+coverage    0 of 29 rules use matches or targets fwreach does not model; 0 findings depend on them
+
+PORT      FAMILY  STATUS               ALLOWED FROM  DELIVERED TO
+tcp/22    ipv4    exposed, expected    any via eth0  sshd on 0.0.0.0
+tcp/22    ipv6    exposed, expected    any via eth0  sshd on ::
+tcp/3000  ipv4    EXPOSED, UNEXPECTED  any via eth0  container ai-webui-1 172.19.0.2:8080
+tcp/3000  ipv6    filtered             -             (listening: docker-proxy on 0.0.0.0, docker-proxy on ::)
+
+tcp/3000 ipv4 from 198.51.100.7 on eth0: delivered to container ai-webui-1 172.19.0.2:8080
+  prerouting  ip docker-bridges raw-PREROUTING  policy accept
+  prerouting  ip docker-bridges nat-PREROUTING #1  fib daddr type local counter jump nat-prerouting-and-output
+  prerouting  ip docker-bridges nat-prerouting-and-output #1  iifname != "br-7d2c41f0e9a8" tcp dport 3000 counter dnat to 172.19.0.2:8080 comment "DNAT"
+  routing     172.19.0.2 is on br-7d2c41f0e9a8: forward
+  forward     inet filter forward  policy accept
+  forward     ip docker-bridges filter-FORWARD #1  oifname vmap @filter-forward-in-jumps ("br-7d2c41f0e9a8" : jump filter-forward-in__br-7d2c41f0e9a8)
+  forward     ip docker-bridges filter-forward-in__br-7d2c41f0e9a8 #3  ip daddr 172.19.0.2 tcp dport 8080 counter accept
+  note        the policy drop of inet filter input would drop this packet on the input path, but DNAT sent it to forward, so input rules never see it
+  note        inet filter forward #1 "tcp dport 3000 drop" matches port 3000, but DNAT already rewrote the packet to 172.19.0.2:8080; match the published port through conntrack (iptables: -m conntrack --ctorigdstport 3000, nft: ct original proto-dst 3000)
+  fix         table inet fwreach-guard {
+              	chain forward {
+              		type filter hook forward priority filter; policy accept;
+              		iifname "eth0" meta l4proto tcp ct original proto-dst 3000 drop
+              	}
+              }
+              see https://docs.docker.com/engine/network/firewall-nftables/
+
+1 unexpected exposure(s)

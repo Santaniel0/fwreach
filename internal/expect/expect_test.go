@@ -39,9 +39,6 @@ allow udp/51820 from 2001:db8::/32
 			t.Errorf("%v from %s: got %v, want %v", tc.pp, tc.src, got, tc.want)
 		}
 	}
-	if n := len(set.Endpoints()); n != 8 {
-		t.Errorf("want 8 endpoints, got %d", n)
-	}
 }
 
 func TestParseErrors(t *testing.T) {

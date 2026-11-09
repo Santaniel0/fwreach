@@ -71,7 +71,7 @@ func droppedByAll(outs []sim.Outcome) (sim.Step, bool) {
 
 func stepRef(s sim.Step) string {
 	if s.Pos == 0 {
-		return fmt.Sprintf("the %s policy of %s %s", s.Text, s.Table, s.Chain)
+		return fmt.Sprintf("the %s of %s %s", s.Text, s.Table, s.Chain)
 	}
 	return fmt.Sprintf("%s %s #%d %q", s.Table, s.Chain, s.Pos, s.Text)
 }

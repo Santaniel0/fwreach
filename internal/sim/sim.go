@@ -76,8 +76,10 @@ type Pipeline struct {
 	hooks map[netpkt.Hook][]baseRef
 }
 
-// New orders the base chains of rs by hook and priority. Ties keep table
-// order, which matches nothing the kernel promises, so tests avoid them.
+// New orders the base chains of rs by hook and priority. Equal priorities
+// keep table order; the kernel promises no order there either, and since
+// every chain must accept for a packet to pass, it only matters when an
+// earlier chain rewrites the packet (DNAT, marks) for a later one.
 func New(rs *ruleset.Ruleset, host *netpkt.Host) *Pipeline {
 	p := &Pipeline{host: host, hooks: make(map[netpkt.Hook][]baseRef)}
 	for _, t := range rs.Tables {

@@ -1,0 +1,6 @@
+{"host": "gpu-1", "collected_at": "2026-11-09T11:40:00Z", "commands": [
+  {"file": "nft.json", "command": "nft -j list ruleset"},
+  {"file": "ss.txt", "command": "ss -Hlntup"},
+  {"file": "ip-addr.json", "command": "ip -j addr"},
+  {"file": "docker-inspect.json", "command": "docker inspect <running containers>"}
+]}

@@ -71,10 +71,16 @@ type Snapshot struct {
 	Warnings   []string
 }
 
-// iptables-nft tables also show up in `nft -j list ruleset`, with their
-// xt matches reduced to a name. When iptables-save is present it is the
-// faithful copy, so these are dropped from the nft side.
-var compatTables = map[string]bool{"filter": true, "nat": true, "raw": true, "mangle": true, "security": true}
+// isCompatTable reports whether t looks like an iptables-nft table. Those
+// also show up in `nft -j list ruleset`, with their xt matches reduced to a
+// name; when iptables-save is present it is the faithful copy.
+func isCompatTable(t *ruleset.Table) bool {
+	switch t.Name {
+	case "filter", "nat", "raw", "mangle", "security":
+		return t.Family != ruleset.FamilyInet
+	}
+	return false
+}
 
 // Load reads a snapshot directory. Missing optional files are fine.
 func Load(dir string) (*Snapshot, error) {
@@ -116,7 +122,7 @@ func Load(dir string) (*Snapshot, error) {
 		}
 		var keep []*ruleset.Table
 		for _, t := range res.Tables {
-			if haveNftCompat && t.Family != ruleset.FamilyInet && compatTables[t.Name] {
+			if haveNftCompat && isCompatTable(t) {
 				continue
 			}
 			keep = append(keep, t)

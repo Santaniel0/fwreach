@@ -23,15 +23,14 @@ type Class struct {
 	Rep netip.Addr
 }
 
-// Samples are preferred representatives. They are documentation addresses,
-// so a trace never shows a real third party.
-var samples = map[netpkt.Family]netip.Addr{
-	netpkt.IPv4: netip.MustParseAddr("198.51.100.7"),
-	netpkt.IPv6: netip.MustParseAddr("2001:db8:ffff::7"),
-}
-
 // Sample returns the address used to stand for "anywhere on the internet".
-func Sample(fam netpkt.Family) netip.Addr { return samples[fam] }
+// It is a documentation address, so a trace never shows a real third party.
+func Sample(fam netpkt.Family) netip.Addr {
+	if fam == netpkt.IPv4 {
+		return netip.AddrFrom4([4]byte{198, 51, 100, 7})
+	}
+	return netip.MustParseAddr("2001:db8:ffff::7")
+}
 
 func bounds(fam netpkt.Family) (netip.Addr, netip.Addr) {
 	if fam == netpkt.IPv4 {
@@ -70,7 +69,7 @@ func Partition(fam netpkt.Family, prefixes []netip.Prefix) []Class {
 }
 
 func rep(fam netpkt.Family, r Range) netip.Addr {
-	if s := samples[fam]; r.Contains(s) {
+	if s := Sample(fam); r.Contains(s) {
 		return s
 	}
 	if r.From.IsUnspecified() && r.From != r.To {

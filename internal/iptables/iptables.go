@@ -26,27 +26,39 @@ type Result struct {
 	Warnings []string
 }
 
-type builtin struct {
-	hook netpkt.Hook
-	kind ruleset.ChainKind
-	prio int
-}
-
-// Built-in chains and the priorities x_tables registers them with; iptables-nft
-// creates base chains with the same values.
-var builtins = map[string]map[string]builtin{
-	"raw": {"PREROUTING": {netpkt.Prerouting, ruleset.KindFilter, -300}, "OUTPUT": {netpkt.Output, ruleset.KindFilter, -300}},
-	"mangle": {
-		"PREROUTING": {netpkt.Prerouting, ruleset.KindFilter, -150}, "INPUT": {netpkt.Input, ruleset.KindFilter, -150},
-		"FORWARD": {netpkt.Forward, ruleset.KindFilter, -150}, "OUTPUT": {netpkt.Output, ruleset.KindRoute, -150},
-		"POSTROUTING": {netpkt.Postrouting, ruleset.KindFilter, -150},
-	},
-	"nat": {
-		"PREROUTING": {netpkt.Prerouting, ruleset.KindNAT, -100}, "INPUT": {netpkt.Input, ruleset.KindNAT, 100},
-		"OUTPUT": {netpkt.Output, ruleset.KindNAT, -100}, "POSTROUTING": {netpkt.Postrouting, ruleset.KindNAT, 100},
-	},
-	"filter":   {"INPUT": {netpkt.Input, ruleset.KindFilter, 0}, "FORWARD": {netpkt.Forward, ruleset.KindFilter, 0}, "OUTPUT": {netpkt.Output, ruleset.KindFilter, 0}},
-	"security": {"INPUT": {netpkt.Input, ruleset.KindFilter, 50}, "FORWARD": {netpkt.Forward, ruleset.KindFilter, 50}, "OUTPUT": {netpkt.Output, ruleset.KindFilter, 50}},
+// builtinChain returns how x_tables attaches a built-in chain: its hook,
+// type and the priority the kernel registers it with. iptables-nft creates
+// base chains with the same values.
+func builtinChain(table, chain string) (ruleset.BaseChain, bool) {
+	hook, ok := netpkt.ParseHook(strings.ToLower(chain))
+	if !ok {
+		return ruleset.BaseChain{}, false
+	}
+	b := ruleset.BaseChain{Hook: hook, Kind: ruleset.KindFilter}
+	switch table {
+	case "raw":
+		b.Priority = -300
+		ok = hook == netpkt.Prerouting || hook == netpkt.Output
+	case "mangle":
+		b.Priority = -150
+		if hook == netpkt.Output {
+			b.Kind = ruleset.KindRoute
+		}
+	case "nat":
+		b.Kind, b.Priority = ruleset.KindNAT, -100
+		if hook == netpkt.Input || hook == netpkt.Postrouting {
+			b.Priority = 100
+		}
+		ok = hook != netpkt.Forward
+	case "filter", "security":
+		if table == "security" {
+			b.Priority = 50
+		}
+		ok = hook == netpkt.Input || hook == netpkt.Forward || hook == netpkt.Output
+	default:
+		ok = false
+	}
+	return b, ok
 }
 
 // Parse reads a dump for one address family. forced overrides the backend
@@ -137,16 +149,16 @@ func declareChain(t *ruleset.Table, decl string) error {
 		return fmt.Errorf("%w: chain declaration %q", ErrSyntax, decl)
 	}
 	c := &ruleset.Chain{Name: f[0]}
-	if b, ok := builtins[t.Name][f[0]]; ok {
-		pol := ruleset.Accept
+	if b, ok := builtinChain(t.Name, f[0]); ok {
 		switch f[1] {
 		case "ACCEPT":
+			b.Policy = ruleset.Accept
 		case "DROP":
-			pol = ruleset.Drop
+			b.Policy = ruleset.Drop
 		default:
 			return fmt.Errorf("%w: policy %q", ErrSyntax, f[1])
 		}
-		c.Base = &ruleset.BaseChain{Hook: b.hook, Kind: b.kind, Priority: b.prio, Policy: pol}
+		c.Base = &b
 	}
 	t.Chains = append(t.Chains, c)
 	return nil

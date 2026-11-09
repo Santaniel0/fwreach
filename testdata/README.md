@@ -39,3 +39,8 @@ Changes made to the upstream material:
   because DNAT already rewrote the port. The forum thread this mirrors:
   https://forums.docker.com/t/how-to-block-ports-inusing-nftables-with-docker-v29/151450
 - `expect.conf`: the expectations file used with all of them.
+
+Some scenarios exist only inside tests, built from these snapshots by small
+edits: ufw's `limit` rules (`-m recent`), a port published on 127.0.0.1, the
+nft hint's table added in JSON form, and a leftover legacy iptables
+`FORWARD DROP` policy next to Docker's nftables rules.

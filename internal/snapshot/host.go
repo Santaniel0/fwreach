@@ -54,6 +54,16 @@ func (l Listener) Bound() string {
 	return s
 }
 
+// String names the socket owner and address, e.g. "sshd on 0.0.0.0".
+// ss shows no process without root, hence the fallback.
+func (l Listener) String() string {
+	proc := l.Process
+	if proc == "" {
+		proc = "unknown process"
+	}
+	return proc + " on " + l.Bound()
+}
+
 // ParseSS reads `ss -Hlntup` output.
 func ParseSS(r io.Reader) ([]Listener, error) {
 	var out []Listener

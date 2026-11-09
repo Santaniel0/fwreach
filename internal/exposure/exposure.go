@@ -391,7 +391,7 @@ func (a *analyzer) sink(o sim.Outcome, iface string) (string, bool) {
 	if o.Local {
 		for _, l := range a.snap.Listeners {
 			if l.Proto == p.Proto && l.Port == p.DstPort && l.Accepts(p.Dst, iface) {
-				return l.Process + " on " + l.Bound(), true
+				return l.String(), true
 			}
 		}
 		return "", false

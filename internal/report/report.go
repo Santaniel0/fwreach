@@ -170,7 +170,7 @@ func deliveredText(f exposure.Finding) string {
 	}
 	var ls []string
 	for _, l := range f.Listeners {
-		ls = append(ls, l.Process+" on "+l.Bound())
+		ls = append(ls, l.String())
 	}
 	if len(ls) == 0 {
 		return "-"

@@ -1,0 +1,32 @@
+fwreach: what this host's netfilter allows inbound (simulated from a snapshot, no packets sent)
+host        web-1, collected 2026-11-09T10:12:03Z
+rules       iptables-save.txt: iptables-nft, 3 tables, 99 rules
+interfaces  eth0 203.0.113.10
+coverage    2 of 99 rules use matches or targets fwreach does not model; 0 findings depend on them
+
+PORT      FAMILY  STATUS               ALLOWED FROM         DELIVERED TO
+tcp/22    ipv4    exposed, expected    any via eth0         sshd on 0.0.0.0
+tcp/80    ipv4    exposed, expected    any via eth0         container app-web-1 172.18.0.2:80
+tcp/443   ipv4    exposed, expected    any via eth0         container app-web-1 172.18.0.2:443
+tcp/5432  ipv4    EXPOSED, UNEXPECTED  any via eth0         container app-db-1 172.18.0.3:5432
+tcp/6379  ipv4    filtered             -                    (listening: docker-proxy on 127.0.0.1)
+tcp/9100  ipv4    exposed, expected    10.0.0.0/8 via eth0  node_exporter on *
+
+tcp/5432 ipv4 from 198.51.100.7 on eth0: delivered to container app-db-1 172.18.0.3:5432
+  prerouting  ip nat PREROUTING #1  -m addrtype --dst-type LOCAL -j DOCKER
+  prerouting  ip nat DOCKER #3  ! -i br-5c1e9a3f0b2d -p tcp -m tcp --dport 5432 -j DNAT --to-destination 172.18.0.3:5432
+  routing     172.18.0.3 is on br-5c1e9a3f0b2d: forward
+  forward     ip filter FORWARD #1  -j DOCKER-USER
+  forward     ip filter FORWARD #2  -j DOCKER-FORWARD
+  forward     ip filter DOCKER-FORWARD #1  -j DOCKER-CT
+  forward     ip filter DOCKER-FORWARD #2  -j DOCKER-INTERNAL
+  forward     ip filter DOCKER-FORWARD #3  -j DOCKER-BRIDGE
+  forward     ip filter DOCKER-BRIDGE #2  -o br-5c1e9a3f0b2d -j DOCKER
+  forward     ip filter DOCKER #3  -d 172.18.0.3/32 ! -i br-5c1e9a3f0b2d -o br-5c1e9a3f0b2d -p tcp -m tcp --dport 5432 -j ACCEPT
+  note        ip filter ufw-user-input #4 "-p tcp -m tcp --dport 5432 -j DROP" would drop this packet on the input path, but DNAT sent it to forward, so input rules never see it
+  fix         iptables -I DOCKER-USER -i eth0 -p tcp -m conntrack --ctorigdstport 5432 -j DROP
+              see https://docs.docker.com/engine/network/firewall-iptables/#match-the-original-ip-and-ports-for-requests
+  fix         if only this host needs it, publish on loopback: -p 127.0.0.1:5432:5432 (compose: "127.0.0.1:5432:5432")
+              see https://docs.docker.com/engine/network/port-publishing/
+
+1 unexpected exposure(s)

@@ -416,8 +416,12 @@ type FixedMatch struct {
 func (m FixedMatch) Eval(*netpkt.Packet, *netpkt.Host) netpkt.Tristate { return netpkt.Bool(m.Matches) }
 
 // HasUnknown reports whether a rule contains a match or action fwreach
-// cannot evaluate.
+// cannot evaluate and that could change a packet's path. A log rule with
+// a rate limit cannot.
 func (r Rule) HasUnknown() bool {
+	if !r.Action.Terminal() {
+		return false
+	}
 	if r.Action.Kind == ActUnknown {
 		return true
 	}

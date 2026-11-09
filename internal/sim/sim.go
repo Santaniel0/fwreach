@@ -208,7 +208,7 @@ func (e *evaluator) runHook(ctx context.Context, hook netpkt.Hook, bs []branch) 
 				next = append(next, b)
 				continue
 			}
-			for _, ex := range e.runChain(b, ref.table, ref.chain, 0, 0) {
+			for _, ex := range e.runChain(b, hook, ref.table, ref.chain, 0, 0) {
 				switch ex.kind {
 				case exitTruncated:
 					done = append(done, outcome(ex.b, false, 0, nil, false, false))
@@ -223,11 +223,16 @@ func (e *evaluator) runHook(ctx context.Context, hook netpkt.Hook, bs []branch) 
 					pol := ref.chain.Base.Policy
 					st := Step{Hook: hook, Source: ref.table.Source, Table: ref.table.ID(), Chain: ref.chain.Name,
 						Text: "policy " + pol.String()}
-					ex.b.trace = append(ex.b.trace, st)
+					// An accepting policy is worth showing only for nftables,
+					// where several base chains of one hook all see the packet.
 					if pol == ruleset.Accept {
+						if ref.table.Source == ruleset.SourceNftables {
+							ex.b.trace = append(ex.b.trace, st)
+						}
 						next = append(next, ex.b)
 						continue
 					}
+					ex.b.trace = append(ex.b.trace, st)
 					done = append(done, outcome(ex.b, true, pol, &st, false, false))
 				}
 			}
@@ -237,13 +242,9 @@ func (e *evaluator) runHook(ctx context.Context, hook netpkt.Hook, bs []branch) 
 	return bs, done, nil
 }
 
-func (e *evaluator) runChain(b branch, t *ruleset.Table, c *ruleset.Chain, from, depth int) []chainExit {
+func (e *evaluator) runChain(b branch, hook netpkt.Hook, t *ruleset.Table, c *ruleset.Chain, from, depth int) []chainExit {
 	if depth > maxDepth {
 		return []chainExit{{b: b, kind: exitTruncated}}
-	}
-	hook := netpkt.Hook(0)
-	if c.Base != nil {
-		hook = c.Base.Hook
 	}
 	var out []chainExit
 	for i := from; i < len(c.Rules); i++ {
@@ -262,7 +263,7 @@ func (e *evaluator) runChain(b branch, t *ruleset.Table, c *ruleset.Chain, from,
 			e.forks++
 			skip := b.fork()
 			skip.assumed = append(skip.assumed, Assumption{Step: st, Matched: false})
-			out = append(out, e.runChain(skip, t, c, i+1, depth)...)
+			out = append(out, e.runChain(skip, hook, t, c, i+1, depth)...)
 			b = b.fork()
 			b.assumed = append(b.assumed, Assumption{Step: st, Matched: true})
 			st.Note = "assumed to match"
@@ -283,12 +284,12 @@ func (e *evaluator) runChain(b branch, t *ruleset.Table, c *ruleset.Chain, from,
 				return append(out, chainExit{b: b, kind: exitTruncated})
 			}
 			b.trace = append(b.trace, st)
-			for _, sub := range e.runChain(b, t, target, 0, depth+1) {
+			for _, sub := range e.runChain(b, hook, t, target, 0, depth+1) {
 				if sub.kind != exitFall || a.Kind == ruleset.ActGoto {
 					out = append(out, sub)
 					continue
 				}
-				out = append(out, e.runChain(sub.b, t, c, i+1, depth)...)
+				out = append(out, e.runChain(sub.b, hook, t, c, i+1, depth)...)
 			}
 			return out
 		case ruleset.ActDNAT, ruleset.ActRedirect:

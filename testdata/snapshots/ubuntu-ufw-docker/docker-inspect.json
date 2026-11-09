@@ -1,0 +1,15 @@
+[
+  {"Id": "9f1c2b7d3e4a", "Name": "/app-web-1",
+   "NetworkSettings": {
+     "Ports": {"80/tcp": [{"HostIp": "0.0.0.0", "HostPort": "80"}, {"HostIp": "::", "HostPort": "80"}],
+               "443/tcp": [{"HostIp": "0.0.0.0", "HostPort": "443"}, {"HostIp": "::", "HostPort": "443"}]},
+     "Networks": {"app_default": {"IPAddress": "172.18.0.2", "Gateway": "172.18.0.1", "GlobalIPv6Address": ""}}}},
+  {"Id": "4b8e0a6c1d2f", "Name": "/app-db-1",
+   "NetworkSettings": {
+     "Ports": {"5432/tcp": [{"HostIp": "0.0.0.0", "HostPort": "5432"}, {"HostIp": "::", "HostPort": "5432"}]},
+     "Networks": {"app_default": {"IPAddress": "172.18.0.3", "Gateway": "172.18.0.1", "GlobalIPv6Address": ""}}}},
+  {"Id": "c3d4e5f60718", "Name": "/app-redis-1",
+   "NetworkSettings": {
+     "Ports": {"6379/tcp": [{"HostIp": "127.0.0.1", "HostPort": "6379"}]},
+     "Networks": {"app_default": {"IPAddress": "172.18.0.4", "Gateway": "172.18.0.1", "GlobalIPv6Address": ""}}}}
+]

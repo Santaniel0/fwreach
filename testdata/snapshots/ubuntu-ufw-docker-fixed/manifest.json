@@ -1,0 +1,7 @@
+{"host": "web-1 (after the DOCKER-USER fix)", "collected_at": "2026-11-09T10:12:03Z", "commands": [
+  {"file": "iptables-save.txt", "command": "iptables-save"},
+  {"file": "ip6tables-save.txt", "command": "ip6tables-save", "error": "fixture: IPv6 rules not included, eth0 has no global IPv6 address"},
+  {"file": "ss.txt", "command": "ss -Hlntup"},
+  {"file": "ip-addr.json", "command": "ip -j addr"},
+  {"file": "docker-inspect.json", "command": "docker inspect <running containers>"}
+]}

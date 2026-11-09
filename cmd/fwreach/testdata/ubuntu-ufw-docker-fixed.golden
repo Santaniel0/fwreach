@@ -1,0 +1,15 @@
+fwreach: what this host's netfilter allows inbound (simulated from a snapshot, no packets sent)
+host        web-1 (after the DOCKER-USER fix), collected 2026-11-09T10:12:03Z
+rules       iptables-save.txt: iptables-nft, 3 tables, 100 rules
+interfaces  eth0 203.0.113.10
+coverage    2 of 100 rules use matches or targets fwreach does not model; 0 findings depend on them
+
+PORT      FAMILY  STATUS             ALLOWED FROM         DELIVERED TO
+tcp/22    ipv4    exposed, expected  any via eth0         sshd on 0.0.0.0
+tcp/80    ipv4    exposed, expected  any via eth0         container app-web-1 172.18.0.2:80
+tcp/443   ipv4    exposed, expected  any via eth0         container app-web-1 172.18.0.2:443
+tcp/5432  ipv4    filtered           -                    (listening: docker-proxy on 0.0.0.0, docker-proxy on ::)
+tcp/6379  ipv4    filtered           -                    (listening: docker-proxy on 127.0.0.1)
+tcp/9100  ipv4    exposed, expected  10.0.0.0/8 via eth0  node_exporter on *
+
+no unexpected exposures

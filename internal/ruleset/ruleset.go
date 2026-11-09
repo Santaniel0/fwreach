@@ -406,11 +406,14 @@ type UnknownMatch struct{ What string }
 
 func (UnknownMatch) Eval(*netpkt.Packet, *netpkt.Host) netpkt.Tristate { return netpkt.Unknown }
 
-// NeverMatch is a match that cannot hold for the TCP and UDP packets
-// fwreach simulates, such as an ICMP type.
-type NeverMatch struct{ What string }
+// FixedMatch has the same answer for every packet fwreach simulates: an
+// ICMP type never matches a TCP SYN, "--ctdir ORIGINAL" always does.
+type FixedMatch struct {
+	Matches bool
+	Why     string
+}
 
-func (NeverMatch) Eval(*netpkt.Packet, *netpkt.Host) netpkt.Tristate { return netpkt.No }
+func (m FixedMatch) Eval(*netpkt.Packet, *netpkt.Host) netpkt.Tristate { return netpkt.Bool(m.Matches) }
 
 // HasUnknown reports whether a rule contains a match or action fwreach
 // cannot evaluate.

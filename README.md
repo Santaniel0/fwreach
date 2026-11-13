@@ -1,5 +1,7 @@
 # fwreach
 
+[![CI](https://github.com/Santaniel0/fwreach/actions/workflows/ci.yml/badge.svg)](https://github.com/Santaniel0/fwreach/actions/workflows/ci.yml)
+
 fwreach берёт снимок правил netfilter Linux-хоста (iptables и nftables), список
 слушающих сокетов и контейнеров Docker и прогоняет через правила входящий пакет
 для каждого открытого порта. На выходе таблица: что netfilter этого хоста
@@ -45,6 +47,8 @@ Issue [moby/moby#22054](https://github.com/moby/moby/issues/22054) открыт 
 выхода, его можно запускать в cron или в CI после деплоя.
 
 ## Установка
+
+Готовые сборки для Linux, Windows и macOS лежат на странице [Releases](https://github.com/Santaniel0/fwreach/releases/latest), Go для них не нужен. Собрать самому через Go:
 
 Нужен Go 1.27 или новее.
 

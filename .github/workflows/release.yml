@@ -15,6 +15,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          # stdlib only, so there is no go.sum to key the cache on
+          cache-dependency-path: go.mod
       - name: test
         run: go test -race ./...
       - name: build
